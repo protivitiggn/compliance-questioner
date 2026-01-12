@@ -30,7 +30,7 @@ export default function QuestionerApp() {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [answers, setAnswers] = useState({
+  const [answers, setAnswers] = useState<Answers>({
     establishmentType: null,
     contractWorkers: null,
     totalEmployees: null,
