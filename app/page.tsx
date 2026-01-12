@@ -1,12 +1,26 @@
 "use client"
 import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { ref, set } from 'firebase/database';
+import { db } from './lib/firebase';
 
-const areAllAnswered = (questions, answers) => {
+type Question = {
+  id: string;
+  question: string;
+  options: string[];
+  type: string;
+  description?: string;
+};
+
+type Answers = {
+  [key: string]: any;
+};
+
+const areAllAnswered = (questions: Question[], answers: Answers): boolean => {
   return questions.every(q => answers[q.id] !== null);
 };
 
-const isValidEmail = (email) => {
+const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
@@ -31,10 +45,10 @@ export default function QuestionerApp() {
     safetyMeasures: null,
   });
 
-  const [impacts, setImpacts] = useState([]);
+  const [impacts, setImpacts] = useState<string[]>([]);
   const [showError, setShowError] = useState(false);
 
-  const baseQuestions = [
+  const baseQuestions: Question[] = [
     {
       id: 'establishmentType',
       question: 'What is the type of establishment?',
@@ -74,21 +88,19 @@ export default function QuestionerApp() {
     'Formal and standardized Employment contracts for all including helpers, loaders, security staff, contract workers.',
   ];
 
-  const getPage2Questions = () => {
-    const page2Qs = [
+  const getPage2Questions = (): Question[] => {
+    const page2Qs: Question[] = [
       {
         id: 'fixedTermEmployees',
         question: 'Whether Fixed Term Employees are employed or intended to be employed?',
         description: "'Fixed term employment' means the engagement of a worker on the basis of a written contract of employment for a fixed period with specific conditions regarding wages and benefits.",
         options: ['Yes', 'No'],
-        impact: "Fixed-Term Employment Parity: Review and update existing HR and payroll processes to ensure parity of wages, benefits, and statutory entitlements for fixed-term employees.",
         type: 'single',
       },
       {
         id: 'salaryStructure',
         question: 'Whether the current salary structure allows more than 50% component as allowance other than Basic Pay, Retaining allowance, and dearness allowance?',
         options: ['Yes', 'No'],
-        impact: 'Salary Structure Adjustments and Increase in Statutory Contributions',
         type: 'single',
       },
     ];
@@ -121,8 +133,8 @@ export default function QuestionerApp() {
     return page2Qs;
   };
 
-  const getPage3Questions = () => {
-    const page3Qs = [];
+  const getPage3Questions = (): Question[] => {
+    const page3Qs: Question[] = [];
 
     if (answers.aggregator === 'Yes') {
       page3Qs.push({
@@ -145,7 +157,7 @@ export default function QuestionerApp() {
     return page3Qs;
   };
 
-  const calculateImpacts = (currentAnswers) => {
+  const calculateImpacts = (currentAnswers: Answers): string[] => {
     const newImpacts = [...defaultImpacts];
 
     if (currentAnswers.fixedTermEmployees === 'Yes') {
@@ -193,17 +205,17 @@ export default function QuestionerApp() {
     return newImpacts;
   };
 
-  const handleAnswer = (questionId, value) => {
+  const handleAnswer = (questionId: string, value: string): void => {
     setAnswers({ ...answers, [questionId]: value });
     setShowError(false);
   };
 
-  const handleEmailChange = (e) => {
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setEmail(e.target.value);
     setEmailError('');
   };
 
-  const submitForm = async () => {
+  const submitForm = async (): Promise<void> => {
     setIsSubmitting(true);
     const formData = {
       email,
@@ -213,38 +225,24 @@ export default function QuestionerApp() {
     };
 
     try {
-      // Option 1: Send to Firebase (recommended for free hosting)
-      // Uncomment and configure this when ready
-      /*
-      const response = await fetch('https://your-firebase-function-url.cloudfunctions.net/submitForm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      */
+      // Clean email for use as database key
+      const cleanEmail = email.replace(/[.#$\[\]]/g, '_');
+      const submissionId = `${cleanEmail}_${new Date().getTime()}`;
 
-      // Option 2: Send to a free backend service like Render or Railway
-      // const response = await fetch('https://your-backend-url.com/api/submit', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData),
-      // });
+      // Save to Firebase
+      await set(ref(db, `submissions/${submissionId}`), formData);
 
-      // Option 3: Store locally (for testing)
-      localStorage.setItem('formSubmission', JSON.stringify(formData));
-
-      // Show success and allow download
-      alert('Form submitted successfully! Email: ' + email);
+      alert('✅ Form submitted successfully!\n\nEmail: ' + email + '\n\nYour data has been saved.');
       downloadFormAsJSON(formData);
-    } catch (error) {
-      console.error('Submission error:', error);
-      alert('Error submitting form. Please try again.');
+    } catch (error: any) {
+      console.error('Firebase submission error:', error);
+      alert('❌ Error submitting form.\n\nError: ' + (error?.message || 'Unknown error') + '\n\nCheck console for details.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const downloadFormAsJSON = (formData) => {
+  const downloadFormAsJSON = (formData: any): void => {
     const dataStr = JSON.stringify(formData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -255,7 +253,7 @@ export default function QuestionerApp() {
     URL.revokeObjectURL(url);
   };
 
-  const handleNext = () => {
+  const handleNext = (): void => {
     if (currentPage === 1) {
       if (!email.trim()) {
         setEmailError('Email is required');
@@ -267,11 +265,11 @@ export default function QuestionerApp() {
       }
     }
 
-    const questionsToCheck = currentPage === 1 
-      ? baseQuestions 
-      : currentPage === 2 
-      ? getPage2Questions() 
-      : getPage3Questions();
+    const questionsToCheck = currentPage === 1
+      ? baseQuestions
+      : currentPage === 2
+        ? getPage2Questions()
+        : getPage3Questions();
 
     if (!areAllAnswered(questionsToCheck, answers)) {
       setShowError(true);
@@ -300,7 +298,7 @@ export default function QuestionerApp() {
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = (): void => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
       setShowError(false);
@@ -315,7 +313,6 @@ export default function QuestionerApp() {
           <div>
             <h2 className="text-2xl font-bold mb-8 text-gray-900">General Information</h2>
             <div className="space-y-8">
-              {/* Email Field */}
               <div className="space-y-3">
                 <label className="block text-base font-semibold text-gray-800">Email Address *</label>
                 <input
@@ -337,17 +334,16 @@ export default function QuestionerApp() {
                 )}
               </div>
 
-              {/* Questions */}
               {baseQuestions.map((q) => (
                 <div key={q.id} className="space-y-4">
                   <label className="block text-base font-semibold text-gray-800">{q.question}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {q.options.map((option) => (
-                      <label 
-                        key={option} 
+                      <label
+                        key={option}
                         className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                          answers[q.id] === option 
-                            ? 'border-blue-600 bg-blue-50' 
+                          answers[q.id] === option
+                            ? 'border-blue-600 bg-blue-50'
                             : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                       >
@@ -385,11 +381,11 @@ export default function QuestionerApp() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {q.options.map((option) => (
-                      <label 
-                        key={option} 
+                      <label
+                        key={option}
                         className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                          answers[q.id] === option 
-                            ? 'border-blue-600 bg-blue-50' 
+                          answers[q.id] === option
+                            ? 'border-blue-600 bg-blue-50'
                             : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                       >
@@ -422,11 +418,11 @@ export default function QuestionerApp() {
                   <label className="block text-base font-semibold text-gray-800">{q.question}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {q.options.map((option) => (
-                      <label 
-                        key={option} 
+                      <label
+                        key={option}
                         className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                          answers[q.id] === option 
-                            ? 'border-blue-600 bg-blue-50' 
+                          answers[q.id] === option
+                            ? 'border-blue-600 bg-blue-50'
                             : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                       >
@@ -478,13 +474,11 @@ export default function QuestionerApp() {
   return (
     <div className="min-h-screen bg-white">
       <div className="w-full">
-        {/* Header Card */}
         <div className="bg-white shadow-lg overflow-hidden">
-          <div className="bg-linear-to-r from-blue-600 to-blue-700 px-8 py-6">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
             <h1 className="text-3xl font-bold text-white mb-2">Labor Code Compliance Assessment</h1>
           </div>
 
-          {/* Progress Section */}
           <div className="px-8 py-6 border-b border-gray-100 bg-gray-50">
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm font-semibold text-gray-700">Progress</span>
@@ -498,7 +492,6 @@ export default function QuestionerApp() {
             </div>
           </div>
 
-          {/* Error Message */}
           {showError && (
             <div className="mx-8 mt-6 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
@@ -509,12 +502,10 @@ export default function QuestionerApp() {
             </div>
           )}
 
-          {/* Main Content */}
           <div className="px-8 py-8 min-h-[500px]">
             {renderPageContent()}
           </div>
 
-          {/* Navigation Footer */}
           <div className="px-8 py-6 border-t border-gray-100 bg-gray-50 flex justify-between gap-4">
             <button
               onClick={handlePrevious}
