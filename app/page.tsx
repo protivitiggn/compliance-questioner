@@ -232,26 +232,26 @@ export default function QuestionerApp() {
       // Save to Firebase
       await set(ref(db, `submissions/${submissionId}`), formData);
 
-      alert('✅ Form submitted successfully!\n\nEmail: ' + email + '\n\nYour data has been saved.');
-      downloadFormAsJSON(formData);
+      alert('Form submitted successfully!\n\n');
+      // downloadFormAsJSON(formData);
     } catch (error: any) {
       console.error('Firebase submission error:', error);
-      alert('❌ Error submitting form.\n\nError: ' + (error?.message || 'Unknown error') + '\n\nCheck console for details.');
+      alert('❌ Error submitting form.\n\nError: ' + (error?.message || 'Unknown error'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const downloadFormAsJSON = (formData: any): void => {
-    const dataStr = JSON.stringify(formData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `compliance_assessment_${email}_${new Date().getTime()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  // const downloadFormAsJSON = (formData: any): void => {
+  //   const dataStr = JSON.stringify(formData, null, 2);
+  //   const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  //   const url = URL.createObjectURL(dataBlob);
+  //   const link = document.createElement('a');
+  //   link.href = url;
+  //   link.download = `compliance_assessment_${email}_${new Date().getTime()}.json`;
+  //   link.click();
+  //   URL.revokeObjectURL(url);
+  // };
 
   const handleNext = (): void => {
     if (currentPage === 1) {
@@ -320,7 +320,7 @@ export default function QuestionerApp() {
                   value={email}
                   onChange={handleEmailChange}
                   placeholder="Enter your email address"
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all ${
+                  className={`w-full px-4 py-3 border-2 rounded-lg text-gray-800 focus:outline-none transition-all placeholder:text-gray-600 ${
                     emailError
                       ? 'border-red-500 bg-red-50 focus:border-red-600'
                       : 'border-gray-300 bg-white focus:border-blue-600'
@@ -526,7 +526,7 @@ export default function QuestionerApp() {
                 disabled={isSubmitting}
                 className="flex items-center px-8 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit & Download'}
+                {isSubmitting ? 'Submitting...' : 'Submit'}
               </button>
             ) : (
               <button
